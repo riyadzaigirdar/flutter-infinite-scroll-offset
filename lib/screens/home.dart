@@ -1,6 +1,6 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
-import 'dart:io' show Platform;
+import 'package:infinite_scroll/screens/components/categories.dart';
+import 'package:infinite_scroll/screens/components/items.dart';
 
 
 class Home extends StatefulWidget{
@@ -10,114 +10,91 @@ class Home extends StatefulWidget{
 
 class _HomeState extends State<Home> {
   ScrollController _controller = ScrollController();
-  final List<String> items = [];
-  bool loading = false, allLoaded = false;
-
-  void mockFetch() async{
-    if(allLoaded){
-      return;
-    }
-
-    setState(() {
-      loading = true;
-    });
-
-    await Future.delayed(Duration(milliseconds: 2000));
-
-    List<String> newItems = items.length >= 60 ? [] : List.generate(20, (index) => 'item ${index+1}');
-    
-    if(newItems.isNotEmpty){
-        items.addAll(newItems);
-    }
-
-    setState(() {
-      loading = false;
-      allLoaded = newItems.isEmpty;
-    });
-  }
+  bool closed = false;
 
   @override
-  void initState(){
+  void initState() {
     super.initState();
-    mockFetch();
     _controller.addListener(() { 
-      if(_controller.position.pixels >= _controller.position.maxScrollExtent && !loading){
-        mockFetch();
-      }
+      closed = _controller.offset > 50;
+      setState(() {});
     });
   }
-
+  
   @override
   void dispose() {
     super.dispose();
     _controller.dispose();
   }
+
   @override
   Widget build(BuildContext context){
-    return Scaffold(
-      appBar: AppBar(
-        title: Text("Infinite Scroll"),
-        backgroundColor: Colors.pink[400],
-      ),
-      body: Scrollbar(
-        radius: Radius.circular(20.0),
-        child: LayoutBuilder(
-          builder: (context, constraints){
-              if(items.isNotEmpty){
-                return Stack(
-                        children: [
-                          ListView.separated(
-                            controller: _controller,
-                            itemBuilder: (context, index){
-                              if(index < items.length){
-                                return ListTile(
-                                  title: Text(items[index]),
-                                );
-                              }else{
-                                return ListTile(
-                                  title: Text(
-                                    "No more items to load",
-                                    style: TextStyle(
-                                      color: Colors.red
-                                    ),
-                                  ),
-                                );
-                              }
-                            }, 
-                            separatorBuilder: (context, index){
-                              return Divider(height: 5,);
-                            }, 
-                            itemCount: allLoaded ? (items.length + 1): items.length
+    final Size size = MediaQuery.of(context).size;
+    return SafeArea(
+            child: Scaffold(
+              backgroundColor: Colors.white,
+              appBar: AppBar(
+                elevation: 0.0,
+                backgroundColor: Colors.white,
+                leading: Icon(
+                  Icons.menu,
+                  color: Colors.black,
+                ),
+                actions: [
+                  IconButton(
+                    onPressed: (){}, 
+                    icon: Icon(
+                      Icons.search,
+                      color: Colors.black,
+                    )
+                  ),
+                  IconButton(
+                    onPressed: (){}, 
+                    icon: Icon(
+                      Icons.person, 
+                      color: Colors.black,
+                    )
+                  )
+                ],
+              ),
+              body: Container(
+                height: size.height,
+                child: Column(
+                  children: <Widget>[
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                      children: <Widget>[
+                        Text(
+                          "Loyalty Cards",
+                          style: TextStyle(
+                            color: Colors.grey,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 20
                           ),
-                        if(loading)
-                        Positioned(
-                          bottom: 5,
-                          left: 0,
-                          right: 0,
-                          child: Center(
-                            child: CircularProgressIndicator()
-                          )
+                        ),
+                        Text(
+                          "Menu",
+                          style: TextStyle(
+                            color: Colors.black,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 20
+                          ),
                         )
-                        ],
-                      );
-              }else{
-                if(Platform.isAndroid){
-                  return Center(
-                      child: CircularProgressIndicator(
-                        color: Colors.white,
-                        backgroundColor: Colors.green,
-                        semanticsLabel: "loading",
-                      ),
-                  );
-                }else{
-                  return Center(
-                    child: CupertinoActivityIndicator(),
-                  );
-                }
-              }
-          },
-        ),
-      ),
-    );
+                      ],
+                    ),
+                    SizedBox(
+                      height: 10,
+                    ),
+                    Categories(closed: closed),
+                    Expanded(
+                      child: Items(
+                        controller: _controller,
+                      )
+                    )
+                  ],
+                  ),
+              ),
+            )
+          );
   }
 }
