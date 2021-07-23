@@ -1,4 +1,4 @@
-const FOOD_DATA = [
+const FOOD_DATA = [ // <Map<String, dynamic>>
   {
     "name":"Burger",
     "brand":"Hawkers",
