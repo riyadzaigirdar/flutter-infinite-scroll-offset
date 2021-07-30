@@ -1,8 +1,13 @@
+import 'dart:io';
+
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
+import 'package:image_gallery_saver/image_gallery_saver.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 
 class App  extends StatelessWidget {
-
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -18,100 +23,112 @@ class MyHomePage extends StatefulWidget {
   _MyHomePageState createState() => _MyHomePageState();
 }
 
-class _MyHomePageState extends State<MyHomePage> with SingleTickerProviderStateMixin {
+class _MyHomePageState extends State<MyHomePage> {
+  bool loading = false;
+  Directory? dir;
+  double progress = 0.0;
+  final Dio dio = Dio();
 
-  // AnimationController controllerOne;
-  // Animation<Color?> animationOne;
-  // Animation<Color?> animationTwo;
+  Future<bool> downloadFile(String url, String fileName) async{
+    
+    try {
+      // permission na dile direct failed
+      // Android 
+        if (Platform.isAndroid){
+          if(await _requestPermission(Permission.storage)){
+            dir = await getExternalStorageDirectory();
+            var newPath = dir?.path.split("/Android")[0];
+            newPath = newPath! + "/video";
+            dir = Directory(newPath.toString());
+            print(dir?.path);
+          }
+        }else{
+        // IOS
+          print("in ios");
+          if(await _requestPermission(Permission.photos)){
+            dir = await getTemporaryDirectory();
+            print(dir);
+          }else{
+            print("rejected");
+            return false;
+          }
+        }
 
-  var controllerOne;
-  var animationOne;
-  var animationTwo;
-
-  @override
-  void initState() {
-    super.initState();
-    controllerOne = AnimationController(
-        duration: Duration(milliseconds: 2000),
-        vsync: this);
-    animationOne = ColorTween(begin: Colors.grey,end: Colors.white70).animate(controllerOne);
-    animationTwo = ColorTween(begin: Colors.white70,end: Colors.grey).animate(controllerOne);
-    controllerOne.forward();
-    controllerOne.addListener((){
-      if(controllerOne.status == AnimationStatus.completed){
-        controllerOne.reverse();
-      } else if(controllerOne.status == AnimationStatus.dismissed){
-        controllerOne.forward();
+        if(!await dir!.exists()){
+          dir?.create(recursive: true);
+        }
+        if(await dir!.exists()){
+          File saveFile = File(dir!.path + "/$fileName");
+          await dio.download(
+            url, 
+            saveFile.path, 
+            onReceiveProgress: (downloaded, totalSize){
+              setState(() {
+                progress = downloaded / totalSize;
+              });
+            }
+          );
+          if(Platform.isIOS){
+            await ImageGallerySaver.saveFile(saveFile.path, isReturnPathOfIOS: true);
+          }
+        }
+    } catch (e) {
+      print(e);
+    }
+    return false;
+  }
+  Future<bool> _requestPermission(Permission permission) async{
+    if(await permission.isGranted){
+      return true;
+    }else{
+      PermissionStatus result = await permission.request();
+      if(result == PermissionStatus.granted){
+        return true;
+      }else{
+        return false;
       }
-      this.setState((){});
+    }
+  }
+  void processDownload() async{
+    setState(() {
+      loading = true;
+    });
+
+    bool downloaded = await downloadFile("https://kalke.co/media-employers/logo1.png", "logo.png");
+    if(downloaded){
+      print("file downloaded");
+    }else{
+      print("failed downloading");
+    }
+    setState(() {
+      loading = false;
     });
   }
 
   @override
-  void dispose() {
-    // TODO: implement dispose
-    super.dispose();
-    controllerOne.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-
+  Widget build(BuildContext context){
     return SafeArea(
       child: Scaffold(
-        body: Padding(
-          padding: const EdgeInsets.all(8.0),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: <Widget>[
-              ShaderMask(
-                shaderCallback: (rect){
-                  return LinearGradient(
-                      tileMode: TileMode.mirror,
-                      begin: Alignment.centerLeft,
-                      end: Alignment.centerRight,
-                      colors: [animationOne.value,animationTwo.value]).createShader(rect,textDirection: TextDirection.ltr);
-                },
-                child: Padding(
-      padding: const EdgeInsets.only(bottom: 8.0),
-      child: SingleChildScrollView(
-        scrollDirection: Axis.vertical,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              width: double.infinity,
-              height: 100,
-              color: Colors.white,
+        body: loading?
+        CircularProgressIndicator(
+          value: progress,
+        ):
+        Center(
+          child: ElevatedButton(
+            
+            onPressed: processDownload,
+            style: TextButton.styleFrom(
+              backgroundColor: Colors.red,
+              padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 10.0)
             ),
-            SizedBox(
-              height: 10,
-            ),
-            Container(
-              width: double.infinity,
-              height: 8.0,
-              color: Colors.white,
-            ),
-            SizedBox(height: 5,),
-            Container(
-              width: double.infinity,
-              height: 8.0,
-              color: Colors.white,
-            ),
-            SizedBox(height: 5,),
-            Container(
-              width: 40.0,
-              height: 8.0,
-              color: Colors.white,
-            ),
-          ],
-        ),
-      ),
-    )
+            child: Text(
+              "Download Video",
+              style: TextStyle(
+                fontWeight: FontWeight.bold
               ),
-            ],
-          ),
-        )
+              ),
+            )
+          ,),
       ),
     );
   }
