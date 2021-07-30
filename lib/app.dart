@@ -37,8 +37,10 @@ class _MyHomePageState extends State<MyHomePage> {
         if (Platform.isAndroid){
           if(await _requestPermission(Permission.storage)){
             dir = await getExternalStorageDirectory();
-            var newPath = dir?.path.split("/Android")[0];
-            newPath = newPath! + "/video";
+            print(dir!.path);
+            // var newPath = dir?.path.split("/data")[0];
+            var newPath = dir!.path;
+            newPath = newPath + "/video";
             dir = Directory(newPath.toString());
             print(dir?.path);
           }
@@ -55,7 +57,7 @@ class _MyHomePageState extends State<MyHomePage> {
         }
 
         if(!await dir!.exists()){
-          dir?.create(recursive: true);
+          await dir?.create(recursive: true);
         }
         if(await dir!.exists()){
           File saveFile = File(dir!.path + "/$fileName");
@@ -71,6 +73,7 @@ class _MyHomePageState extends State<MyHomePage> {
           if(Platform.isIOS){
             await ImageGallerySaver.saveFile(saveFile.path, isReturnPathOfIOS: true);
           }
+          return true;
         }
     } catch (e) {
       print(e);
@@ -94,7 +97,7 @@ class _MyHomePageState extends State<MyHomePage> {
       loading = true;
     });
 
-    bool downloaded = await downloadFile("https://kalke.co/media-employers/logo1.png", "logo.png");
+    bool downloaded = await downloadFile("https://kalke.co/media-employers/logo1.png", "logo1.png");
     if(downloaded){
       print("file downloaded");
     }else{
