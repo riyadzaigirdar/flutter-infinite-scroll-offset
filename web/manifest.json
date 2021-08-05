@@ -1,6 +1,6 @@
 {
-    "name": "infinite_scroll",
-    "short_name": "infinite_scroll",
+    "name": "refresh",
+    "short_name": "refresh",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#0175C2",

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import 'app.dart';
+import 'package:refresh/app.dart';
+
 void main() {
-  runApp(App());
+  runApp(MyApp());
 }
 

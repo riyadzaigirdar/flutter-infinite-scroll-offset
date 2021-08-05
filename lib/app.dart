@@ -1,139 +1,96 @@
-import 'dart:io';
-
-import 'package:dio/dio.dart';
+import 'package:refresh/model.dart';
+import 'package:refresh/loading.dart';
 import 'package:flutter/material.dart';
-import 'package:image_gallery_saver/image_gallery_saver.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:permission_handler/permission_handler.dart';
+import 'package:flutter/cupertino.dart';
 
-
-class App  extends StatelessWidget {
+class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      home: Scaffold(
-        body: MyHomePage(),
-      ),
+      home: Home(),
     );
   }
 }
 
-class MyHomePage extends StatefulWidget {
+class Home extends StatefulWidget {
   @override
-  _MyHomePageState createState() => _MyHomePageState();
+  _HomeState createState() => _HomeState();
 }
 
-class _MyHomePageState extends State<MyHomePage> {
-  bool loading = false;
-  Directory? dir;
-  double progress = 0.0;
-  final Dio dio = Dio();
+class _HomeState extends State<Home> {
+  List<Post>? post;
+  bool loading = true;
+  bool _showBackToTopButton = false;
+  ScrollController _controller = ScrollController();
 
-  Future<bool> downloadFile(String url, String fileName) async{
-    
-    try {
-      // permission na dile direct failed
-      // Android 
-        if (Platform.isAndroid){
-          if(await _requestPermission(Permission.storage)){
-            dir = await getExternalStorageDirectory();
-            print(dir!.path);
-            // var newPath = dir?.path.split("/data")[0];
-            var newPath = dir!.path;
-            newPath = newPath + "/video";
-            dir = Directory(newPath.toString());
-            print(dir?.path);
-          }
-        }else{
-        // IOS
-          print("in ios");
-          if(await _requestPermission(Permission.photos)){
-            dir = await getTemporaryDirectory();
-            print(dir);
-          }else{
-            print("rejected");
-            return false;
-          }
+  @override
+  void initState() {
+    super.initState();
+    fetchData();
+    _controller.addListener(() {
+      setState(() {
+        if (_controller.offset >= 400) {
+          _showBackToTopButton = true; // show the back-to-top button
+        } else {
+          _showBackToTopButton = false; // hide the back-to-top button
         }
+      });
+    });
+  }
 
-        if(!await dir!.exists()){
-          await dir?.create(recursive: true);
-        }
-        if(await dir!.exists()){
-          File saveFile = File(dir!.path + "/$fileName");
-          await dio.download(
-            url, 
-            saveFile.path, 
-            onReceiveProgress: (downloaded, totalSize){
-              setState(() {
-                progress = downloaded / totalSize;
-              });
-            }
-          );
-          if(Platform.isIOS){
-            await ImageGallerySaver.saveFile(saveFile.path, isReturnPathOfIOS: true);
-          }
-          return true;
-        }
-    } catch (e) {
-      print(e);
-    }
-    return false;
+  @override
+  void dispose() {
+    _controller.dispose(); // dispose the controller
+    super.dispose();
   }
-  Future<bool> _requestPermission(Permission permission) async{
-    if(await permission.isGranted){
-      return true;
-    }else{
-      PermissionStatus result = await permission.request();
-      if(result == PermissionStatus.granted){
-        return true;
-      }else{
-        return false;
-      }
-    }
-  }
-  void processDownload() async{
+
+  void fetchData() async {
     setState(() {
       loading = true;
     });
-
-    bool downloaded = await downloadFile("https://kalke.co/media-employers/logo1.png", "logo1.png");
-    if(downloaded){
-      print("file downloaded");
-    }else{
-      print("failed downloading");
-    }
-    setState(() {
-      loading = false;
-    });
+    post = await getPosts();
+    loading = false;
+    setState(() {});
   }
 
   @override
-  Widget build(BuildContext context){
-    return SafeArea(
-      child: Scaffold(
-        body: loading?
-        CircularProgressIndicator(
-          value: progress,
-        ):
-        Center(
-          child: ElevatedButton(
-            
-            onPressed: processDownload,
-            style: TextButton.styleFrom(
-              backgroundColor: Colors.red,
-              padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 10.0)
-            ),
-            child: Text(
-              "Download Video",
-              style: TextStyle(
-                fontWeight: FontWeight.bold
-              ),
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: Text("Refresh"),
+        backgroundColor: Colors.pink,
+      ),
+      body: (!loading)
+          ? RefreshIndicator(
+              onRefresh: () async {
+                post = await getPosts();
+                setState(() {});
+              },
+              child: Scrollbar(
+                thickness: 5,
+                child: ListView.builder(
+                    controller: _controller,
+                    itemCount: post?.length,
+                    itemBuilder: (context, index) {
+                      return ListTile(
+                        leading: Text('Id: ${post![index].id}'),
+                        title: Text(post![index].title),
+                        subtitle: Text('User id ${post![index].userId}'),
+                        onTap: () {},
+                      );
+                    }),
               ),
             )
-          ,),
-      ),
+          : Center(child: Loading()),
+      floatingActionButton: _showBackToTopButton == false
+          ? null
+          : FloatingActionButton(
+              onPressed: () {
+                _controller.animateTo(0,
+                    duration: Duration(seconds: 1), curve: Curves.linear);
+              },
+              child: Icon(Icons.arrow_upward),
+            ),
     );
   }
 }
-

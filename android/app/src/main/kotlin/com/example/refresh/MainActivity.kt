@@ -1,4 +1,4 @@
-package com.example.infinite_scroll
+package com.example.refresh
 
 import io.flutter.embedding.android.FlutterActivity
 
